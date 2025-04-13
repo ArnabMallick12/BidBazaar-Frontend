@@ -161,7 +161,13 @@ const Home = () => {
             >
               <div className="relative h-48">
                 <img
-                  src={product.images?.[0]?.image_data || "https://via.placeholder.com/400x300?text=No+Image"}
+                  src={
+                    product.images && 
+                    product.images.length > 0 && 
+                    product.images[0].image_url ? 
+                      product.images[0].image_url : 
+                      "https://via.placeholder.com/400x300?text=No+Image"
+                  }
                   alt={product.title}
                   className="w-full h-full object-cover"
                 />

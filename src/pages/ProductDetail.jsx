@@ -116,11 +116,17 @@ const ProductDetail = () => {
         {/* Product Images */}
         <div className="space-y-4">
           <div className="aspect-w-16 aspect-h-9">
-            <img
-              src={product.images?.[0]?.image_data || '/placeholder.png'}
-              alt={product.title}
-              className="object-cover rounded-lg"
-            />
+          <img
+                  src={
+                    product.images && 
+                    product.images.length > 0 && 
+                    product.images[0].image_url ? 
+                      product.images[0].image_url : 
+                      "https://via.placeholder.com/400x300?text=No+Image"
+                  }
+                  alt={product.title}
+                  className="w-full h-full object-cover"
+                />
           </div>
           {product.images?.length > 1 && (
             <div className="grid grid-cols-4 gap-2">

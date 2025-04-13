@@ -16,41 +16,44 @@ const MyBids = () => {
         // First get all products
         const products = await auctionAPI.getAllProducts();
         
-        // Process each product to find user's bids and check highest bid status
+        // Process each product to find user's bids and check bid status
         const bidsPromises = products.map(async (product) => {
           try {
             // Get all bids for this product
-            const allProductBids = await auctionAPI.getBids(product.id);
+            const productBids = await auctionAPI.getMyBidsOnProduct(product.id);
             
-            // Filter bids that belong to current user
-            const currentUserId = authAPI.getCurrentUser().id;
-            const myBidsOnProduct = allProductBids.filter(bid => 
-              bid.user_id === currentUserId
-            );
-            
-            if (myBidsOnProduct.length === 0) {
-              return [];
+            if (productBids && productBids.length > 0) {
+              // Add product details to each bid
+              return productBids.map(bid => {
+                // Determine bid status
+                let bidStatus = 'Outbid';
+                let statusClass = 'text-yellow-600';
+                
+                // Check if product is sold and this bid was accepted
+                if (product.sold && (product.highest_bid_id === bid.bid_id || product.highest_bid_id === bid.id)) {
+                  bidStatus = 'Accepted';
+                  statusClass = 'text-green-600 font-bold';
+                }
+                // If product is not sold but this is the highest bid
+                else if (!product.sold && (product.highest_bid_id === bid.bid_id || product.highest_bid_id === bid.id)) {
+                  bidStatus = 'Highest Bid';
+                  statusClass = 'text-green-600';
+                }
+                
+                return {
+                  ...bid,
+                  product_id: product.id,
+                  product_title: product.title,
+                  product_description: product.description,
+                  product_images: product.images,
+                  bid_status: bidStatus,
+                  status_class: statusClass,
+                  is_accepted: product.sold && (product.highest_bid_id === bid.bid_id || product.highest_bid_id === bid.id),
+                  is_highest_bid: !product.sold && (product.highest_bid_id === bid.bid_id || product.highest_bid_id === bid.id)
+                };
+              });
             }
-            
-            // Get the highest bid for this product
-            let highestBid;
-            try {
-              highestBid = await auctionAPI.getHighestBid(product.id);
-            } catch (highestBidError) {
-              console.log(`No highest bid for product ${product.id}`);
-              highestBid = null;
-            }
-            
-            // Add product details to each of the user's bids on this product
-            return myBidsOnProduct.map(bid => ({
-              ...bid,
-              product_id: product.id,
-              product_title: product.title,
-              product_description: product.description,
-              product_images: product.images,
-              // Check if this bid is the highest bid
-              is_highest_bid: highestBid && highestBid.id === bid.id
-            }));
+            return [];
           } catch (err) {
             console.error(`Error fetching bids for product ${product.id}:`, err);
             return [];
@@ -104,14 +107,20 @@ const MyBids = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {bids.map((bid) => (
           <Link
-            key={`${bid.product_id}-${bid.id}`}
+            key={`${bid.product_id}-${bid.bid_id || bid.id}`}
             to={`/product/${bid.product_id}`}
             className="block bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-200"
           >
             <div className="p-4">
               <div className="aspect-w-16 aspect-h-9 mb-4">
                 <img
-                  src={bid.product_images?.[0] || '/placeholder.png'}
+                  src={
+                    bid.product_images && 
+                    bid.product_images.length > 0 && 
+                    bid.product_images[0].image_url ? 
+                      bid.product_images[0].image_url : 
+                      "/placeholder.png"
+                  }
                   alt={bid.product_title}
                   className="object-cover rounded-md"
                 />
@@ -131,10 +140,8 @@ const MyBids = () => {
                 </div>
                 <div className="text-right">
                   <p className="text-sm text-gray-500">Status</p>
-                  <p className={`text-sm font-medium ${
-                    bid.is_highest_bid ? 'text-green-600' : 'text-yellow-600'
-                  }`}>
-                    {bid.is_highest_bid ? 'Highest Bid' : 'Outbid'}
+                  <p className={`text-sm font-medium ${bid.status_class}`}>
+                    {bid.bid_status}
                   </p>
                 </div>
               </div>

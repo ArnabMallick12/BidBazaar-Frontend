@@ -91,6 +91,7 @@ export const auctionAPI = {
           headers: {
             "Content-Type": "multipart/form-data",
           },
+          
         }
       );
       return response.data;
@@ -226,6 +227,7 @@ export const auctionAPI = {
   getMyListings: async () => {
     try {
       const response = await api.get('/auction/my-listings/');
+      console.log(response.data);
       return response.data;
     } catch (error) {
       console.error("Error fetching my listings:", error);

@@ -108,9 +108,15 @@ const MyListings = () => {
           >
             <div className="relative aspect-w-16 aspect-h-9">
               <img
-                src={listing.images?.[0]?.image || '/placeholder.png'}
+                src={
+                  listing.images && 
+                  listing.images.length > 0 && 
+                  listing.images[0].image_url ? 
+                    listing.images[0].image_url : 
+                    '/placeholder.png'
+                }
                 alt={listing.title}
-                className="object-cover"
+                className="object-cover rounded-md"
               />
               <button
                 onClick={() => confirmDeleteProduct(listing)}

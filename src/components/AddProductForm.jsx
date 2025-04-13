@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { auctionAPI } from "../api/auction";
 import { toast } from "react-hot-toast";
+import { authAPI } from "../api/auth";
 
 const AddProductForm = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [images, setImages] = useState([]);
-  const [imageUrls, setImageUrls] = useState([]); // Array to store Cloudinary URLs
+  const [imageUrls, setImageUrls] = useState([]);
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -41,6 +41,8 @@ const AddProductForm = () => {
         );
 
         const data = await response.json();
+        console.log("Cloudinary response:", data); // Log the response for debugging
+        
 
         if (data.secure_url) {
           uploadedUrls.push(data.secure_url); // Add the image URL to the list
@@ -62,6 +64,35 @@ const AddProductForm = () => {
     }));
   };
 
+  // Create product function
+  const createProduct = async (productData) => {
+    try {
+      const token = authAPI.getToken(); // Assuming this function exists to get auth token
+      const response = await fetch('http://192.168.1.2:5001/api/auction/products/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(productData)
+      });
+      console.log('API Response:', response);
+      console.log("product data: ", productData) // Log the response for debugging
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('API Error Response:', errorText);
+        throw new Error(`API error: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Error creating product:', error);
+      throw error;
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -80,14 +111,14 @@ const AddProductForm = () => {
         throw new Error("End date must be after start date");
       }
 
-      // Include the Cloudinary image URLs in the form data
-      const productData = {
+      // Prepare product data with image URLs
+      const newProduct = {
         ...formData,
-        images: imageUrls, // Add image URLs to product data
+        image_urls: imageUrls
       };
 
-      // First create the product
-      const product = await auctionAPI.createProduct(productData);
+      // Create the product using the new function
+      const product = await createProduct(newProduct);
 
       toast.success("Product added successfully!");
       navigate("/my-listings");
@@ -248,7 +279,10 @@ const AddProductForm = () => {
                   />
                   <button
                     type="button"
-                    onClick={() => setImages(images.filter((_, i) => i !== index))}
+                    onClick={() => {
+                      setImages(images.filter((_, i) => i !== index));
+                      setImageUrls(imageUrls.filter((_, i) => i !== index));
+                    }}
                     className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
                   >
                     <svg
