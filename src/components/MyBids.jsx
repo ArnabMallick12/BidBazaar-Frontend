@@ -16,22 +16,41 @@ const MyBids = () => {
         // First get all products
         const products = await auctionAPI.getAllProducts();
         
-        // Then get bids for each product
+        // Process each product to find user's bids and check highest bid status
         const bidsPromises = products.map(async (product) => {
           try {
-            const productBids = await auctionAPI.getMyBidsOnProduct(product.id);
-            if (productBids && productBids.length > 0) {
-              // Add product details to each bid
-              return productBids.map(bid => ({
-                ...bid,
-                product_id: product.id,
-                product_title: product.title,
-                product_description: product.description,
-                product_images: product.images,
-                is_highest_bid: product.highest_bidder_id === authAPI.getCurrentUser().id
-              }));
+            // Get all bids for this product
+            const allProductBids = await auctionAPI.getBids(product.id);
+            
+            // Filter bids that belong to current user
+            const currentUserId = authAPI.getCurrentUser().id;
+            const myBidsOnProduct = allProductBids.filter(bid => 
+              bid.user_id === currentUserId
+            );
+            
+            if (myBidsOnProduct.length === 0) {
+              return [];
             }
-            return [];
+            
+            // Get the highest bid for this product
+            let highestBid;
+            try {
+              highestBid = await auctionAPI.getHighestBid(product.id);
+            } catch (highestBidError) {
+              console.log(`No highest bid for product ${product.id}`);
+              highestBid = null;
+            }
+            
+            // Add product details to each of the user's bids on this product
+            return myBidsOnProduct.map(bid => ({
+              ...bid,
+              product_id: product.id,
+              product_title: product.title,
+              product_description: product.description,
+              product_images: product.images,
+              // Check if this bid is the highest bid
+              is_highest_bid: highestBid && highestBid.id === bid.id
+            }));
           } catch (err) {
             console.error(`Error fetching bids for product ${product.id}:`, err);
             return [];
@@ -85,7 +104,7 @@ const MyBids = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {bids.map((bid) => (
           <Link
-            key={`${bid.product_id}-${bid.bid_id}`}
+            key={`${bid.product_id}-${bid.id}`}
             to={`/product/${bid.product_id}`}
             className="block bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-200"
           >

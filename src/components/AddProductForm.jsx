@@ -7,6 +7,7 @@ const AddProductForm = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [images, setImages] = useState([]);
+  const [imageUrls, setImageUrls] = useState([]); // Array to store Cloudinary URLs
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -16,9 +17,41 @@ const AddProductForm = () => {
     end_date: "",
   });
 
-  const handleImageChange = (e) => {
+  // Handle image selection and upload to Cloudinary
+  const handleImageChange = async (e) => {
     const files = Array.from(e.target.files);
     setImages(files);
+
+    const uploadedUrls = [];
+
+    for (const file of files) {
+      const cloudName = "dbagrlzha"; // from dashboard
+      const uploadPreset = "sudeep"; // the one you created
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("upload_preset", uploadPreset);
+
+      try {
+        const response = await fetch(
+          `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
+          {
+            method: "POST",
+            body: formData,
+          }
+        );
+
+        const data = await response.json();
+
+        if (data.secure_url) {
+          uploadedUrls.push(data.secure_url); // Add the image URL to the list
+        }
+      } catch (error) {
+        console.error("Error uploading image to Cloudinary:", error);
+        toast.error("Failed to upload image.");
+      }
+    }
+
+    setImageUrls(uploadedUrls); // Update the image URLs state with Cloudinary URLs
   };
 
   const handleChange = (e) => {
@@ -47,13 +80,14 @@ const AddProductForm = () => {
         throw new Error("End date must be after start date");
       }
 
-      // First create the product
-      const product = await auctionAPI.createProduct(formData);
+      // Include the Cloudinary image URLs in the form data
+      const productData = {
+        ...formData,
+        images: imageUrls, // Add image URLs to product data
+      };
 
-      // Then upload images if any
-      if (images.length > 0) {
-        await auctionAPI.uploadProductImages(product.id, images);
-      }
+      // First create the product
+      const product = await auctionAPI.createProduct(productData);
 
       toast.success("Product added successfully!");
       navigate("/my-listings");
@@ -242,16 +276,16 @@ const AddProductForm = () => {
           <button
             type="button"
             onClick={() => navigate("/my-listings")}
-            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={loading}
-            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
-            {loading ? "Adding Product..." : "Add Product"}
+            {loading ? "Adding..." : "Add Product"}
           </button>
         </div>
       </form>
@@ -259,4 +293,4 @@ const AddProductForm = () => {
   );
 };
 
-export default AddProductForm; 
+export default AddProductForm;
