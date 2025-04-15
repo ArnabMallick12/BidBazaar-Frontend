@@ -1,15 +1,16 @@
-import { Navigate, useLocation } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
 import { authAPI } from '../api/auth';
 
 const ProtectedRoute = ({ children }) => {
-  const location = useLocation();
+  // Check if user is authenticated
   const isAuthenticated = authAPI.isAuthenticated();
-
+  
+  // If not authenticated, redirect to login page
   if (!isAuthenticated) {
-    // Redirect to login page but save the attempted location
-    return <Navigate to="/login" state={{ from: location }} replace />;
+    return <Navigate to="/login" replace />;
   }
-
+  
+  // If authenticated, render the children components
   return children;
 };
 

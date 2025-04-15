@@ -135,14 +135,8 @@ export const authAPI = {
   },
 
   isAuthenticated: () => {
-    try {
-      const token = localStorage.getItem('token');
-      const refreshToken = localStorage.getItem('refresh_token');
-      return !!(token && refreshToken);
-    } catch (error) {
-      console.error('Error checking authentication:', error);
-      return false;
-    }
+    const token = localStorage.getItem('token');
+    return !!token; // Returns true if token exists, false otherwise
   },
 
   // Add a method to get the current token
