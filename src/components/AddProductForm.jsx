@@ -1,13 +1,16 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import { authAPI } from "../api/auth";
+import { API_URL } from '../config';
 
 const AddProductForm = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [images, setImages] = useState([]);
   const [imageUrls, setImageUrls] = useState([]);
+  const [uploading, setUploading] = useState(false);
+  const [formComplete, setFormComplete] = useState(false);
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -17,10 +20,24 @@ const AddProductForm = () => {
     end_date: "",
   });
 
+  useEffect(() => {
+    const isFormFilled = 
+      formData.title.trim() !== "" && 
+      formData.description.trim() !== "" && 
+      formData.starting_price.trim() !== "" && 
+      formData.start_date.trim() !== "" && 
+      formData.end_date.trim() !== "";
+    
+    const areImagesUploaded = imageUrls.length > 0;
+    
+    setFormComplete(isFormFilled && areImagesUploaded && !uploading);
+  }, [formData, imageUrls, uploading]);
+
   // Handle image selection and upload to Cloudinary
   const handleImageChange = async (e) => {
     const files = Array.from(e.target.files);
     setImages(files);
+    setUploading(true);
 
     const uploadedUrls = [];
 
@@ -54,6 +71,13 @@ const AddProductForm = () => {
     }
 
     setImageUrls(uploadedUrls); // Update the image URLs state with Cloudinary URLs
+    setUploading(false);
+    
+    if (uploadedUrls.length > 0) {
+      toast.success(`${uploadedUrls.length} image(s) uploaded successfully!`);
+    } else if (files.length > 0) {
+      toast.error("Failed to upload images. Please try again.");
+    }
   };
 
   const handleChange = (e) => {
@@ -68,7 +92,7 @@ const AddProductForm = () => {
   const createProduct = async (productData) => {
     try {
       const token = authAPI.getToken(); // Assuming this function exists to get auth token
-      const response = await fetch('http://192.168.1.2:5001/api/auction/products/', {
+      const response = await fetch(`${API_URL}/auction/products/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -305,6 +329,14 @@ const AddProductForm = () => {
           </div>
         )}
 
+        {/* Upload status indicator */}
+        {uploading && (
+          <div className="flex items-center justify-center py-2">
+            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500 mr-2"></div>
+            <span className="text-sm text-blue-600">Uploading images...</span>
+          </div>
+        )}
+
         {/* Submit Button */}
         <div className="flex justify-end space-x-3">
           <button
@@ -316,10 +348,14 @@ const AddProductForm = () => {
           </button>
           <button
             type="submit"
-            disabled={loading}
-            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            disabled={loading || !formComplete}
+            className={`px-4 py-2 text-sm font-medium text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+              formComplete && !loading
+                ? "bg-blue-600 hover:bg-blue-700"
+                : "bg-blue-400 cursor-not-allowed"
+            }`}
           >
-            {loading ? "Adding..." : "Add Product"}
+            {loading ? "Adding..." : uploading ? "Please wait..." : "Add Product"}
           </button>
         </div>
       </form>

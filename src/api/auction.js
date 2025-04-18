@@ -5,6 +5,9 @@ import { authAPI } from './auth';
 // Create axios instance with default config
 const api = axios.create({
   baseURL: API_URL,
+  headers: {
+    "ngrok-skip-browser-warning": "any-value" ,
+  },
 });
 
 // Add request interceptor to add auth token

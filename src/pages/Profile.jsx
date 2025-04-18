@@ -108,9 +108,9 @@ const Profile = () => {
                 key={product.id}
                 className="border rounded-lg overflow-hidden hover:shadow-lg transition-shadow"
               >
-                {product.images && product.images.length > 0 && (
+                {product.images[0].image_url && product.images.length > 0 && (
                   <img
-                    src={product.images[0].image}
+                    src={product.images[0].image_url}
                     alt={product.title}
                     className="w-full h-48 object-cover"
                   />

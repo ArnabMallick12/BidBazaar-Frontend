@@ -4,6 +4,9 @@ import { API_URL } from '../config';
 // Create axios instance with default config
 const api = axios.create({
   baseURL: API_URL,
+  headers: {
+    "ngrok-skip-browser-warning": "any-value" ,
+  },
 });
 
 // Helper function to validate token data

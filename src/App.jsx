@@ -59,6 +59,12 @@ function App() {
                 <MyBids />
               </ProtectedRoute>
             } />
+
+            <Route path="/profile" element={
+              <ProtectedRoute>
+                <Profile />
+              </ProtectedRoute>
+            } />
             
             {/* Catch-all route - redirect to home or login page */}
             <Route path="*" element={
