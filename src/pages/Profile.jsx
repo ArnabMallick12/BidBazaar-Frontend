@@ -88,12 +88,7 @@ const Profile = () => {
             >
               Logout
             </button>
-            <button
-              onClick={confirmDeleteAccount}
-              className="bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600 transition"
-            >
-              Delete Account
-            </button>
+           
           </div>
         </div>
       </div>
