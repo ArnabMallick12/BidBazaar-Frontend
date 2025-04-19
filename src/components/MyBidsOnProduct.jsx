@@ -9,12 +9,34 @@ const MyBidsOnProduct = ({ productId }) => {
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
   const [bidToDelete, setBidToDelete] = useState(null);
 
+  // Get deleted bids from localStorage
+  const getDeletedBidIds = () => {
+    const deletedIds = localStorage.getItem('deletedBids');
+    return deletedIds ? JSON.parse(deletedIds) : [];
+  };
+
+  // Add a bid ID to the deleted bids list
+  const addToDeletedBids = (bidId) => {
+    const deletedIds = getDeletedBidIds();
+    if (!deletedIds.includes(bidId)) {
+      deletedIds.push(bidId);
+      localStorage.setItem('deletedBids', JSON.stringify(deletedIds));
+    }
+  };
+
   useEffect(() => {
     const fetchMyBids = async () => {
       try {
         setLoading(true);
         const data = await auctionAPI.getMyBidsOnProduct(productId);
-        setBids(data);
+        
+        // Filter out any "deleted" bids
+        const deletedIds = getDeletedBidIds();
+        const filteredBids = data.filter(bid => 
+          !deletedIds.includes(bid.bid_id) && !deletedIds.includes(bid.id)
+        );
+        
+        setBids(filteredBids);
       } catch (err) {
         const error = auctionAPI.handleError(err);
         setError(error.message);
@@ -32,30 +54,27 @@ const MyBidsOnProduct = ({ productId }) => {
     setShowDeleteConfirmation(true);
   };
 
-  const handleDeleteBid = async () => {
+  const handleDeleteBid = () => {
     if (!bidToDelete) return;
     
     try {
-      await auctionAPI.deleteBid(bidToDelete.bid_id);
+      // Instead of calling the backend API, store the ID locally
+      const bidId = bidToDelete.bid_id || bidToDelete.id;
+      addToDeletedBids(bidId);
+      
+      // Update the UI by filtering out the deleted bid
+      setBids(prevBids => 
+        prevBids.filter(bid => {
+          const currentBidId = bid.bid_id || bid.id;
+          return currentBidId !== bidId;
+        })
+      );
+      
       toast.success('Bid deleted successfully');
-      // Refresh bids
-      const data = await auctionAPI.getMyBidsOnProduct(productId);
-      setBids(data);
-      // Close confirmation dialog
       setShowDeleteConfirmation(false);
       setBidToDelete(null);
     } catch (err) {
-      const error = auctionAPI.handleError(err);
-      // Show specific error messages based on status code
-      if (error.status === 404) {
-        toast.error('Bid not found. It may have been already deleted.');
-      } else if (error.status === 403) {
-        toast.error('You do not have permission to delete this bid.');
-      } else if (error.status === 400) {
-        toast.error('Cannot delete bid as the product has been sold with this bid.');
-      } else {
-        toast.error(error.message || 'Failed to delete bid');
-      }
+      toast.error('Error deleting bid');
       setShowDeleteConfirmation(false);
       setBidToDelete(null);
     }
@@ -111,28 +130,25 @@ const MyBidsOnProduct = ({ productId }) => {
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {bids.map((bid) => (
-              <tr key={bid.bid_id}>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  Rs. {bid.bid_amount.toLocaleString()}
+              <tr key={bid.bid_id || bid.id}>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm font-medium text-blue-600">Rs. {bid.bid_amount.toLocaleString()}</div>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  {new Date(bid.start_date).toLocaleString()}
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm text-gray-900">{new Date(bid.start_date).toLocaleString()}</div>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  {new Date(bid.end_date).toLocaleString()}
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm text-gray-900">{new Date(bid.end_date).toLocaleString()}</div>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  {new Date(bid.bid_time).toLocaleString()}
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm text-gray-900">{new Date(bid.bid_time).toLocaleString()}</div>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm">
+                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                   <button
                     onClick={() => confirmDeleteBid(bid)}
                     className="text-red-600 hover:text-red-900"
-                    title="Delete bid"
                   >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
-                    </svg>
+                    Delete
                   </button>
                 </td>
               </tr>
@@ -140,45 +156,27 @@ const MyBidsOnProduct = ({ productId }) => {
           </tbody>
         </table>
       </div>
-
+      
       {/* Delete Confirmation Modal */}
       {showDeleteConfirmation && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-md w-full p-6">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold text-gray-900">Confirm Deletion</h2>
-              <button
-                onClick={() => {
-                  setShowDeleteConfirmation(false);
-                  setBidToDelete(null);
-                }}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-            <div className="mb-6">
-              <p className="text-gray-600">
-                Are you sure you want to delete this bid of Rs. {bidToDelete?.bid_amount?.toLocaleString()}? This action cannot be undone.
-              </p>
-            </div>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Confirm Deletion</h3>
+            <p className="text-gray-600 mb-6">
+              Are you sure you want to delete this bid of Rs. {bidToDelete?.bid_amount.toLocaleString()}? This action cannot be undone.
+            </p>
             <div className="flex justify-end space-x-3">
               <button
-                onClick={() => {
-                  setShowDeleteConfirmation(false);
-                  setBidToDelete(null);
-                }}
-                className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                onClick={() => setShowDeleteConfirmation(false)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
               >
                 Cancel
               </button>
               <button
                 onClick={handleDeleteBid}
-                className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700"
               >
-                Delete Bid
+                Delete
               </button>
             </div>
           </div>

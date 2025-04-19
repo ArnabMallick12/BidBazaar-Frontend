@@ -9,6 +9,11 @@ const MyBids = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  const getDeletedBidIds = () => {
+    const deletedIds = localStorage.getItem('deletedBids');
+    return deletedIds ? JSON.parse(deletedIds) : [];
+  };
+
   useEffect(() => {
     const fetchBids = async () => {
       try {
@@ -16,15 +21,24 @@ const MyBids = () => {
         // First get all products
         const products = await auctionAPI.getAllProducts();
         
+        // Get deleted bid IDs
+        const deletedBidIds = getDeletedBidIds();
+        
         // Process each product to find user's bids and check bid status
         const bidsPromises = products.map(async (product) => {
           try {
             // Get all bids for this product
             const productBids = await auctionAPI.getMyBidsOnProduct(product.id);
             
-            if (productBids && productBids.length > 0) {
+            // Filter out deleted bids
+            const filteredBids = productBids.filter(bid => {
+              const bidId = bid.bid_id || bid.id;
+              return !deletedBidIds.includes(bidId);
+            });
+            
+            if (filteredBids && filteredBids.length > 0) {
               // Add product details to each bid
-              return productBids.map(bid => {
+              return filteredBids.map(bid => {
                 // Determine bid status
                 let bidStatus = 'Outbid';
                 let statusClass = 'text-yellow-600';
